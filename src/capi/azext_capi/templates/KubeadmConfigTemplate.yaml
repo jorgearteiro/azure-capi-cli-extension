@@ -1,5 +1,5 @@
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
+apiVersion: bootstrap.cluster.x-k8s.io/v1alpha4
 kind: KubeadmConfigTemplate
 metadata:
   name: {{ CLUSTER_NAME }}-{{ SUFFIX }}
@@ -13,6 +13,7 @@ spec:
           kubeletExtraArgs:
             cloud-provider: {% if EXTERNAL_CLOUD_PROVIDER %}external{% else %}azure{% endif %}
             {%- if WINDOWS %}
+            azure-container-registry-config: c:/k/azure.json
             cloud-config: c:/k/azure.json
             pod-infra-container-image: mcr.microsoft.com/oss/kubernetes/pause:1.4.1
             {%- else %}
@@ -44,4 +45,15 @@ spec:
           icacls C:/ProgramData/ssh/administrators_authorized_keys /grant SYSTEM:F
           icacls C:/ProgramData/ssh/administrators_authorized_keys /grant BUILTIN\Administrators:F
           restart-service sshd
+      {%- endif %}
+      {%- if WINDOWS %}
+      postKubeadmCommands:
+      - nssm set kubelet start SERVICE_AUTO_START
+      preKubeadmCommands:
+      - powershell c:/create-external-network.ps1
+      users:
+      - groups: Administrators
+        name: capi
+        sshAuthorizedKeys:
+        - "{{ AZURE_SSH_PUBLIC_KEY }}"      
       {%- endif %}

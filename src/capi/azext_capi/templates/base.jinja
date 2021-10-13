@@ -26,3 +26,7 @@
 {% include "KubeadmConfigTemplate.yaml" %}
 {%- endif %}
 {%- endblock nodepool %}
+
+{%- block identity %}
+{% include "AzureClusterIdentity.yaml" %}
+{%- endblock identity %}

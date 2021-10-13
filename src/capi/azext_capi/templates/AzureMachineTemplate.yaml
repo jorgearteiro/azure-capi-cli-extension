@@ -1,19 +1,24 @@
 ---
 kind: AzureMachineTemplate
-apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha4
 metadata:
   name: {{ CLUSTER_NAME }}-{{ SUFFIX }}
 spec:
   template:
     spec:
+      {% if WINDOWS %}
       location: {{ AZURE_LOCATION }}
+      {%- endif %}
       vmSize: {{ AZURE_CONTROL_PLANE_MACHINE_TYPE or "Standard_D2s_v3" }}
       osDisk:
         osType: {% if WINDOWS %}Windows{% else %}Linux{% endif %}
-        diskSizeGB: 128
+        diskSizeGB: {% if EPHEMERAL %}50{% else %}128{% endif %}
+        {% if WINDOWS %}
         managedDisk:
           storageAccountType: {% if EPHEMERAL %}Standard_LRS{% else %}Premium_LRS{% endif %}
+        {%- endif %}
         {%- if EPHEMERAL %}
+        cachingType: ReadOnly
         diffDiskSettings:
           option: Local
         {%- endif %}

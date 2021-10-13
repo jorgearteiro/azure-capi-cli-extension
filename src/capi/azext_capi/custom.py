@@ -223,12 +223,18 @@ def create_workload_cluster(  # pylint: disable=unused-argument,too-many-argumen
         resource_group_name=None,
         location=None,
         control_plane_machine_type=os.environ.get("AZURE_CONTROL_PLANE_MACHINE_TYPE"),
-        control_plane_machine_count=os.environ.get("AZURE_CONTROL_PLANE_MACHINE_COUNT", 3),
+        control_plane_machine_count=os.environ.get("AZURE_CONTROL_PLANE_MACHINE_COUNT", 1),
         node_machine_type=os.environ.get("AZURE_NODE_MACHINE_TYPE"),
-        node_machine_count=os.environ.get("AZURE_NODE_MACHINE_COUNT", 3),
-        kubernetes_version=os.environ.get("AZURE_KUBERNETES_VERSION", "1.20.6"),
+        node_machine_count=os.environ.get("AZURE_NODE_MACHINE_COUNT", 1),
+        kubernetes_version=os.environ.get("AZURE_KUBERNETES_VERSION", "1.20.10"),
         subscription_id=os.environ.get("AZURE_SUBSCRIPTION_ID"),
-        ssh_public_key=os.environ.get("AZURE_SSH_PUBLIC_KEY_B64", ""),
+        client_id=os.environ.get("AZURE_CLIENT_ID"),
+        tenant_id=os.environ.get("AZURE_TENANT_ID"),
+        ssh_public_key_B64=os.environ.get("AZURE_SSH_PUBLIC_KEY_B64", ""),
+        ssh_public_key=os.environ.get("AZURE_SSH_PUBLIC_KEY", ""),
+        cluster_identity_secret_name=os.environ.get("AZURE_CLUSTER_IDENTITY_SECRET_NAME", "cluster-identity"),
+        cluster_identity_name=os.environ.get("CLUSTER_IDENTITY_NAME", "cluster-identity"),
+        cluster_identity_secret_namespace=os.environ.get("AZURE_CLUSTER_IDENTITY_SECRET_NAMESPACE", "default"),
         vnet_name=None,
         machinepool=False,
         ephemeral_disks=False,
@@ -236,7 +242,7 @@ def create_workload_cluster(  # pylint: disable=unused-argument,too-many-argumen
         output_path=None,
         yes=False):
     # Generate the cluster configuration
-    env = Environment(loader=PackageLoader(__name__, "templates"), auto_reload=False)
+    env = Environment(loader=PackageLoader("azext_capi", "templates"), auto_reload=False)
     logger.debug("Available templates: %s", env.list_templates())
     template = env.get_template("base.jinja")
 
@@ -246,7 +252,15 @@ def create_workload_cluster(  # pylint: disable=unused-argument,too-many-argumen
         "AZURE_NODE_MACHINE_TYPE": node_machine_type,
         "AZURE_RESOURCE_GROUP": resource_group_name,
         "AZURE_SUBSCRIPTION_ID": subscription_id,
-        "AZURE_SSH_PUBLIC_KEY_B64": ssh_public_key,
+        "AZURE_CLIENT_ID": client_id,
+        "AZURE_TENANT_ID": tenant_id,
+        "CONTROL_PLANE_MACHINE_COUNT": control_plane_machine_count,
+        "WORKER_MACHINE_COUNT": node_machine_count,
+        "AZURE_SSH_PUBLIC_KEY_B64": ssh_public_key_B64,
+        "AZURE_SSH_PUBLIC_KEY": ssh_public_key,
+        "AZURE_CLUSTER_IDENTITY_SECRET_NAME": cluster_identity_secret_name,
+        "CLUSTER_IDENTITY_NAME": cluster_identity_name,
+        "AZURE_CLUSTER_IDENTITY_SECRET_NAMESPACE": cluster_identity_secret_namespace,
         "AZURE_VNET_NAME": vnet_name,
         "CLUSTER_NAME": capi_name,
         "KUBERNETES_VERSION": kubernetes_version,
@@ -549,11 +563,11 @@ def find_management_cluster():
             raise ResourceNotFoundError("No CAPZ installation found")
     except subprocess.CalledProcessError as err:
         logger.error(err)
-    cmd = ["kubectl", "get", "pods", "--namespace", "capi-webhook-system"]
-    try:
-        match = check_cmd(cmd, r"capz-controller-manager-.+?Running")
-        if match is None:
-            raise ResourceNotFoundError("No CAPZ installation found")
+    #cmd = ["kubectl", "get", "pods", "--namespace", "capi-webhook-system"]
+    # try:
+    #     match = check_cmd(cmd, r"capz-controller-manager-.+?Running")
+    #     if match is None:
+    #         raise ResourceNotFoundError("No CAPZ installation found")
     except subprocess.CalledProcessError as err:
         logger.error(err)
 
